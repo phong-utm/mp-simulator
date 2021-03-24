@@ -1,25 +1,16 @@
 import { Coordinates, RouteData } from "./types"
 
-function randomSpeed(currentSpeed: number, baseSpeed: number) {
-  const maxSpeed = baseSpeed * 1.3
-  const minSpeed = baseSpeed / 3
-  const changeRatio = 0.2 * Math.random() - 0.1 // random number between -0.1 and 0.1
-  const updatedSpeed = (1 + changeRatio) * currentSpeed
-  return updatedSpeed > maxSpeed
-    ? maxSpeed
-    : updatedSpeed < minSpeed
-    ? minSpeed
-    : updatedSpeed
-}
-
-const AVG_BOARDING_TIME_PER_PASSENGER = 6 // seconds
+const PER_PASSENGER_BOADING_SECS = 6
+const PER_PASSENGER_ALIGHTING_SECS = 2
+const DOOR_OPEN_CLOSE_SECS = 5
 
 export default class TripSimulator {
   private tripProgress: TripProgress
-  private readonly reportLocation: () => void
   private currentSpeed?: number
   private currentTime: number
+  private readonly reportLocation: () => Promise<void>
   private readonly accelerationRate: number
+  private readonly realtimeMode: boolean
 
   constructor(
     routeData: RouteData,
@@ -30,17 +21,19 @@ export default class TripSimulator {
     options: {
       tripStartTime?: number
       accelerationRate?: number
+      realtimeMode?: boolean
     } = {}
   ) {
     this.tripProgress = new TripProgress(routeData)
     this.currentTime = options.tripStartTime ?? Date.now()
     this.accelerationRate = options.accelerationRate ?? 1
-    this.reportLocation = () => {
+    this.realtimeMode = options.realtimeMode ?? true
+    this.reportLocation = async () => {
       const data = {
         location: this.tripProgress.currentLocation,
         time: this.currentTime,
       }
-      reportLocation(data).catch(console.error)
+      await reportLocation(data)
     }
   }
 
@@ -48,20 +41,31 @@ export default class TripSimulator {
     this.tick()
   }
 
-  private tick = () => {
-    this.reportLocation()
+  private tick = async () => {
+    if (
+      this.realtimeMode ||
+      this.tripProgress.startOfLink ||
+      this.tripProgress.endOfLink
+    ) {
+      await this.reportLocation()
+    }
 
-    if (!this.tripProgress.ended) {
-      const nextStepDuration = this.tripProgress.isEndOfLink()
-        ? this.calculateDwellTimeAtStop()
-        : this.calculateTravelTimeForNextSegment()
+    if (this.tripProgress.ended) {
+      return //console.log(`Trip ended.`)
+    }
 
-      setTimeout(() => {
+    const nextStepDuration = this.tripProgress.endOfLink
+      ? this.calculateDwellTimeAtStop()
+      : this.calculateTravelTimeForNextSegment()
+
+    setTimeout(
+      () => {
         this.tripProgress = this.tripProgress.moveNext()
         this.currentTime += nextStepDuration * 1000
         this.tick()
-      }, (nextStepDuration * 1000) / this.accelerationRate)
-    }
+      },
+      this.realtimeMode ? (nextStepDuration * 1000) / this.accelerationRate : 0
+    )
   }
 
   private calculateTravelTimeForNextSegment() {
@@ -72,22 +76,33 @@ export default class TripSimulator {
   }
 
   private calculateDwellTimeAtStop() {
-    const boardingPassengers = Math.random() * 10
-    return boardingPassengers * AVG_BOARDING_TIME_PER_PASSENGER
+    const boardingPassengers =
+      Math.round(Math.random()) * Math.floor(Math.random() * 10)
+    const alightingPassengers =
+      Math.round(Math.random()) * Math.floor(Math.random() * 10)
+    const boadingTime = boardingPassengers * PER_PASSENGER_BOADING_SECS
+    const alightingTime = alightingPassengers * PER_PASSENGER_ALIGHTING_SECS
+    return boadingTime > 0 || alightingTime > 0
+      ? max(boadingTime, alightingTime) + DOOR_OPEN_CLOSE_SECS
+      : 0
   }
 }
 
 class TripProgress {
   readonly ended: boolean
+  readonly startOfLink: boolean
+  readonly endOfLink: boolean
 
   constructor(
     private routeData: RouteData,
     private readonly linkIndex = 0,
     private readonly pointIndex = 0
   ) {
-    this.ended =
-      linkIndex === routeData.links.length - 1 &&
-      pointIndex === routeData.links[linkIndex].points.length - 1
+    const endOfLink =
+      pointIndex === this.routeData.links[linkIndex].points.length - 1
+    this.startOfLink = pointIndex === 0
+    this.endOfLink = endOfLink
+    this.ended = endOfLink && linkIndex === routeData.links.length - 1
   }
 
   get currentLocation(): Coordinates {
@@ -97,8 +112,7 @@ class TripProgress {
   }
 
   moveNext() {
-    if (this.isEndOfLink()) {
-      // console.log("** end of link **")
+    if (this.endOfLink) {
       return new TripProgress(this.routeData, this.linkIndex + 1, 0)
     } else {
       return new TripProgress(
@@ -109,12 +123,6 @@ class TripProgress {
     }
   }
 
-  isEndOfLink() {
-    return (
-      this.pointIndex === this.routeData.links[this.linkIndex].points.length - 1
-    )
-  }
-
   getNextSegmentLength() {
     return this.routeData.links[this.linkIndex].points[this.pointIndex + 1]
       .distFromPrev
@@ -123,7 +131,7 @@ class TripProgress {
   getCurrentLinkBaseSpeed() {
     const { length, baseDuration } = this.routeData.links[this.linkIndex]
     const dwellTime =
-      this.linkIndex === 0 || baseDuration < 120
+      this.linkIndex === 0 || baseDuration < 60
         ? 0
         : min(30, 0.1 * baseDuration)
     return length / (baseDuration - dwellTime)
@@ -132,4 +140,17 @@ class TripProgress {
 
 function min(a: number, b: number) {
   return a < b ? a : b
+}
+
+function max(a: number, b: number) {
+  return a > b ? a : b
+}
+
+function randomSpeed(currentSpeed: number, baseSpeed: number) {
+  const maxSpeed = baseSpeed * 3
+  const minSpeed = baseSpeed / 3
+  const changeRatio = 0.2 * Math.random() - 0.1 // random number between -0.1 and 0.1
+  const updatedSpeed = (1 + changeRatio) * currentSpeed
+  // prettier-ignore
+  return updatedSpeed > maxSpeed ? maxSpeed : updatedSpeed < minSpeed ? minSpeed : updatedSpeed
 }
