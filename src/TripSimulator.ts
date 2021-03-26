@@ -37,11 +37,16 @@ export default class TripSimulator {
     }
   }
 
-  start() {
-    this.tick()
+  run() {
+    return new Promise((resolve, reject) => {
+      this.tick(resolve, reject).catch(reject)
+    })
   }
 
-  private tick = async () => {
+  private tick = async (
+    done: (val?: any) => void,
+    err: (reason?: any) => void
+  ) => {
     if (
       this.realtimeMode ||
       this.tripProgress.startOfLink ||
@@ -51,7 +56,7 @@ export default class TripSimulator {
     }
 
     if (this.tripProgress.ended) {
-      return //console.log(`Trip ended.`)
+      return done()
     }
 
     const nextStepDuration = this.tripProgress.endOfLink
@@ -62,7 +67,7 @@ export default class TripSimulator {
       () => {
         this.tripProgress = this.tripProgress.moveNext()
         this.currentTime += nextStepDuration * 1000
-        this.tick()
+        this.tick(done, err).catch(err)
       },
       this.realtimeMode ? (nextStepDuration * 1000) / this.accelerationRate : 0
     )

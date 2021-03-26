@@ -4,10 +4,6 @@ import TripSimulator from "./TripSimulator"
 import config from "./config"
 import { Coordinates, RouteData } from "./types"
 
-// const generateQuickGuid = () =>
-//   Math.random().toString(36).substring(2, 15) +
-//   Math.random().toString(36).substring(2, 15)
-
 const getDayId = (d: Date) => {
   return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate()
 }
@@ -46,7 +42,11 @@ async function generateRealtimeData(routeId: string) {
       accelerationRate: 100,
     }
   )
-  trip.start()
+
+  // prettier-ignore
+  console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
+  await trip.run()
+  console.log("DONE!!!")
 }
 
 async function generateDataForDate(routeId: string, d: Date) {
@@ -69,11 +69,16 @@ async function generateDataForDate(routeId: string, d: Date) {
       },
       {
         realtimeMode: false,
+        tripStartTime: start.getTime(),
       }
     )
-    trip.start()
+
+    // prettier-ignore
+    console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
+    await trip.run()
     start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
   }
+  console.log("DONE!!!")
 }
 
 async function generateDataForMonth(routeId: string, monthId: number) {
@@ -100,19 +105,29 @@ async function generateDataForMonth(routeId: string, monthId: number) {
         },
         {
           realtimeMode: false,
+          tripStartTime: start.getTime(),
         }
       )
-      trip.start()
+
+      // prettier-ignore
+      console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
+      await trip.run()
       start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
     }
     d = new Date(d.getTime() + 24 * 60 * 60 * 1000) // next day
   }
+  console.log("DONE!!!")
 }
 
 generateRealtimeData("T100").catch(console.error)
 
-// generateDataForDate("T100", new Date()).catch(console.error)
 // generateDataForMonth("T100", 202102).catch(console.error)
+
+// generateDataForDate("T100", new Date(2021, 2, 22)).catch(console.error)
+// generateDataForDate("T100", new Date(2021, 2, 23)).catch(console.error)
+// generateDataForDate("T100", new Date(2021, 2, 24)).catch(console.error)
+
+// generateDataForDate("T100", new Date()).catch(console.error)
 
 // async function getRouteBaseDuration(routeId: string) {
 //   // prettier-ignore
