@@ -21,7 +21,10 @@ const getScheduledStart = (t: Date) => {
   return `${to2Digits(h)}:${to2Digits(m)}`
 }
 
-async function generateRealtimeData(routeId: string) {
+async function generateRealtimeData(
+  routeId: string,
+  options?: { accelerationRate: number }
+) {
   // prettier-ignore
   const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
 
@@ -38,9 +41,7 @@ async function generateRealtimeData(routeId: string) {
         json: data,
       })
     },
-    {
-      accelerationRate: 100,
-    }
+    options
   )
 
   // prettier-ignore
@@ -119,7 +120,7 @@ async function generateDataForMonth(routeId: string, monthId: number) {
   console.log("DONE!!!")
 }
 
-generateRealtimeData("T100").catch(console.error)
+generateRealtimeData("T100", { accelerationRate: 5 }).catch(console.error)
 
 // generateDataForMonth("T100", 202102).catch(console.error)
 
