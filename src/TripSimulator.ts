@@ -4,6 +4,12 @@ const PER_PASSENGER_BOADING_SECS = 6
 const PER_PASSENGER_ALIGHTING_SECS = 2
 const DOOR_OPEN_CLOSE_SECS = 5
 
+export interface TripSimulatorOptions {
+  tripStartTime?: number
+  accelerationRate?: number
+  realtimeMode?: boolean
+}
+
 export default class TripSimulator {
   private tripProgress: TripProgress
   private currentSpeed?: number
@@ -18,11 +24,7 @@ export default class TripSimulator {
       location: Coordinates
       time: number
     }) => Promise<void>,
-    options: {
-      tripStartTime?: number
-      accelerationRate?: number
-      realtimeMode?: boolean
-    } = {}
+    options: TripSimulatorOptions = {}
   ) {
     this.tripProgress = new TripProgress(routeData)
     this.currentTime = options.tripStartTime ?? Date.now()

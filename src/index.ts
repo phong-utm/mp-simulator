@@ -1,5 +1,5 @@
 import got from "got"
-import TripSimulator from "./TripSimulator"
+import TripSimulator, { TripSimulatorOptions } from "./TripSimulator"
 
 import config from "./config"
 import { Coordinates, RouteData } from "./types"
@@ -21,22 +21,21 @@ const getScheduledStart = (t: Date) => {
   return `${to2Digits(h)}:${to2Digits(m)}`
 }
 
-async function generateRealtimeData(
+async function _generateTrip(
   routeId: string,
-  options?: { accelerationRate: number }
+  routeData: RouteData,
+  dayId: number,
+  scheduledStart: string,
+  options: TripSimulatorOptions = {}
 ) {
-  // prettier-ignore
-  const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
-
-  const scheduledStart = getScheduledStart(new Date())
-  const dayId = getDayId(new Date())
   const startTripUrl = `${config.apiBaseUrl}/trip?route=${routeId}&day=${dayId}&start=${scheduledStart}`
   const { tripId } = await got.post(startTripUrl).json<{ tripId: string }>()
-
   const trip = new TripSimulator(
     routeData,
     async (data: { location: Coordinates; time: number }) => {
-      //console.log(new Date(data.time), data.location)
+      if (options.realtimeMode) {
+        console.log(new Date(data.time), data.location)
+      }
       await got.post(`${config.apiBaseUrl}/location/${tripId}`, {
         json: data,
       })
@@ -45,84 +44,73 @@ async function generateRealtimeData(
   )
 
   // prettier-ignore
-  console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
+  // console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
   await trip.run()
+}
+
+async function _generateDate(routeId: string, routeData: RouteData, d: Date) {
+  const dayId = getDayId(d)
+  console.log(`Generating data for route ${routeId} on ${dayId}...`)
+
+  let start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6)
+  while (start.getHours() < 21) {
+    const scheduledStart = getScheduledStart(start)
+    await _generateTrip(routeId, routeData, dayId, scheduledStart, {
+      realtimeMode: false,
+      tripStartTime: start.getTime(),
+    })
+    start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
+  }
+}
+
+async function generateRealtimeData(
+  routeId: string,
+  options?: { accelerationRate: number }
+) {
+  // prettier-ignore
+  const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
+  const dayId = getDayId(new Date())
+  const scheduledStart = getScheduledStart(new Date())
+
+  // prettier-ignore
+  console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
+  await _generateTrip(routeId, routeData, dayId, scheduledStart, options)
+
   console.log("DONE!!!")
 }
 
 async function generateDataForDate(routeId: string, d: Date) {
   // prettier-ignore
   const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
-
-  const dayId = getDayId(d)
-  let start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6)
-  while (start.getHours() < 21) {
-    const scheduledStart = getScheduledStart(start)
-    const startTripUrl = `${config.apiBaseUrl}/trip?route=${routeId}&day=${dayId}&start=${scheduledStart}`
-    const { tripId } = await got.post(startTripUrl).json<{ tripId: string }>()
-    const trip = new TripSimulator(
-      routeData,
-      async (data: { location: Coordinates; time: number }) => {
-        // console.log(new Date(data.time), data.location)
-        await got.post(`${config.apiBaseUrl}/location/${tripId}`, {
-          json: data,
-        })
-      },
-      {
-        realtimeMode: false,
-        tripStartTime: start.getTime(),
-      }
-    )
-
-    // prettier-ignore
-    console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
-    await trip.run()
-    start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
-  }
+  await _generateDate(routeId, routeData, d)
   console.log("DONE!!!")
 }
 
 async function generateDataForMonth(routeId: string, monthId: number) {
-  const year = Math.floor(monthId / 100)
-  const month = (monthId % 100) - 1
   // prettier-ignore
   const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
 
+  const year = Math.floor(monthId / 100)
+  const month = (monthId % 100) - 1
+
+  // get list of days in the month
+  const days: Date[] = []
   let d = new Date(year, month, 1)
   while (d.getMonth() === month) {
-    const dayId = getDayId(d)
-    let start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6)
-    while (start.getHours() < 21) {
-      const scheduledStart = getScheduledStart(start)
-      const startTripUrl = `${config.apiBaseUrl}/trip?route=${routeId}&day=${dayId}&start=${scheduledStart}`
-      const { tripId } = await got.post(startTripUrl).json<{ tripId: string }>()
-      const trip = new TripSimulator(
-        routeData,
-        async (data: { location: Coordinates; time: number }) => {
-          // console.log(new Date(data.time), data.location)
-          await got.post(`${config.apiBaseUrl}/location/${tripId}`, {
-            json: data,
-          })
-        },
-        {
-          realtimeMode: false,
-          tripStartTime: start.getTime(),
-        }
-      )
-
-      // prettier-ignore
-      console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
-      await trip.run()
-      start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
-    }
+    days.push(d)
     d = new Date(d.getTime() + 24 * 60 * 60 * 1000) // next day
   }
+
+  // generate the days in parallel
+  await Promise.all(
+    days.map((d) => _generateDate(routeId, routeData, d))
+  ).catch(console.error)
+
   console.log("DONE!!!")
 }
 
-generateRealtimeData("T100", { accelerationRate: 5 }).catch(console.error)
-
-// generateDataForMonth("T100", 202102).catch(console.error)
+// generateRealtimeData("T100", { accelerationRate: 100 }).catch(console.error)
+generateDataForMonth("T100", 202012).catch(console.error)
 
 // generateDataForDate("T100", new Date(2021, 2, 22)).catch(console.error)
 // generateDataForDate("T100", new Date(2021, 2, 23)).catch(console.error)
