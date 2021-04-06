@@ -21,14 +21,21 @@ const getScheduledStart = (t: Date) => {
   return `${to2Digits(h)}:${to2Digits(m)}`
 }
 
+const getDriver = (drivers: string[], scheduledStart: string) => {
+  const mins = scheduledStart.substring(scheduledStart.length - 2)
+  const index = parseInt(mins) / 15
+  return drivers[index]
+}
+
 async function _generateTrip(
   routeId: string,
   routeData: RouteData,
   dayId: number,
   scheduledStart: string,
+  driver: string,
   options: TripSimulatorOptions = {}
 ) {
-  const startTripUrl = `${config.apiBaseUrl}/trip?route=${routeId}&day=${dayId}&start=${scheduledStart}`
+  const startTripUrl = `${config.apiBaseUrl}/trip?route=${routeId}&day=${dayId}&start=${scheduledStart}&driver=${driver}`
   const { tripId } = await got.post(startTripUrl).json<{ tripId: string }>()
   const trip = new TripSimulator(
     routeData,
@@ -55,7 +62,8 @@ async function _generateDate(routeId: string, routeData: RouteData, d: Date) {
   let start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6)
   while (start.getHours() < 21) {
     const scheduledStart = getScheduledStart(start)
-    await _generateTrip(routeId, routeData, dayId, scheduledStart, {
+    const driver = getDriver(routeData.drivers, scheduledStart)
+    await _generateTrip(routeId, routeData, dayId, scheduledStart, driver, {
       realtimeMode: false,
       tripStartTime: start.getTime(),
     })
@@ -71,10 +79,18 @@ async function generateRealtimeData(
   const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
   const dayId = getDayId(new Date())
   const scheduledStart = getScheduledStart(new Date())
+  const driver = getDriver(routeData.drivers, scheduledStart)
 
   // prettier-ignore
   console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
-  await _generateTrip(routeId, routeData, dayId, scheduledStart, options)
+  await _generateTrip(
+    routeId,
+    routeData,
+    dayId,
+    scheduledStart,
+    driver,
+    options
+  )
 
   console.log("DONE!!!")
 }
@@ -109,14 +125,14 @@ async function generateDataForMonth(routeId: string, monthId: number) {
   console.log("DONE!!!")
 }
 
-// generateRealtimeData("T100", { accelerationRate: 100 }).catch(console.error)
-generateDataForMonth("T100", 202012).catch(console.error)
+generateRealtimeData("R", { accelerationRate: 5 }).catch(console.error)
+// generateDataForMonth("H", 202012).catch(console.error)
 
-// generateDataForDate("T100", new Date(2021, 2, 22)).catch(console.error)
-// generateDataForDate("T100", new Date(2021, 2, 23)).catch(console.error)
-// generateDataForDate("T100", new Date(2021, 2, 24)).catch(console.error)
+// generateDataForDate("H", new Date(2021, 2, 22)).catch(console.error)
+// generateDataForDate("H", new Date(2021, 2, 23)).catch(console.error)
+// generateDataForDate("H", new Date(2021, 2, 24)).catch(console.error)
 
-// generateDataForDate("T100", new Date()).catch(console.error)
+// generateDataForDate("H", new Date()).catch(console.error)
 
 // async function getRouteBaseDuration(routeId: string) {
 //   // prettier-ignore
@@ -124,4 +140,4 @@ generateDataForMonth("T100", 202012).catch(console.error)
 //   return routeData.links.reduce((tmp, l) => tmp + l.baseDuration, 0)
 // }
 
-// getRouteBaseDuration("T100").then(console.log).catch(console.error)
+// getRouteBaseDuration("H").then(console.log).catch(console.error)

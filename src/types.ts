@@ -19,4 +19,5 @@ export interface RouteData {
   origin: string
   destination: string
   links: LinkData[]
+  drivers: string[]
 }
