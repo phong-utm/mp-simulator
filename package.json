@@ -4,10 +4,10 @@
   "main": "src/index.ts",
   "license": "MIT",
   "scripts": {
-    "start": "nodemon",
-    "test": "jest --watch",
+    "simulate": "ts-node -r dotenv/config src/simulate.ts",
+    "analyze": "ts-node -r dotenv/config src/analyze.ts",
     "build": "tsc",
-    "serve": "yarn build && NODE_ENV=production node -r dotenv/config dist/server"
+    "test": "jest --watch"
   },
   "dependencies": {
     "got": "^11.8.1"
