@@ -8,6 +8,7 @@ export interface TripSimulatorOptions {
   tripStartTime?: number
   accelerationRate?: number
   realtimeMode?: boolean
+  variationFactor?: number
 }
 
 export default class TripSimulator {
@@ -17,6 +18,7 @@ export default class TripSimulator {
   private readonly reportLocation: () => Promise<void>
   private readonly accelerationRate: number
   private readonly realtimeMode: boolean
+  private readonly variationFactor: number
 
   constructor(
     routeData: RouteData,
@@ -30,6 +32,7 @@ export default class TripSimulator {
     this.currentTime = options.tripStartTime ?? Date.now()
     this.accelerationRate = options.accelerationRate ?? 1
     this.realtimeMode = options.realtimeMode ?? true
+    this.variationFactor = options.variationFactor ?? 1.5
     this.reportLocation = async () => {
       const data = {
         location: this.tripProgress.currentLocation,
@@ -78,7 +81,11 @@ export default class TripSimulator {
   private calculateTravelTimeForNextSegment() {
     const distance = this.tripProgress.getNextSegmentLength()
     const baseSpeed = this.tripProgress.getCurrentLinkBaseSpeed()
-    this.currentSpeed = randomSpeed(this.currentSpeed ?? baseSpeed, baseSpeed)
+    this.currentSpeed = randomSpeed(
+      this.currentSpeed ?? baseSpeed,
+      baseSpeed,
+      this.variationFactor
+    )
     return distance / this.currentSpeed
   }
 
@@ -153,9 +160,9 @@ function max(a: number, b: number) {
   return a > b ? a : b
 }
 
-function randomSpeed(currentSpeed: number, baseSpeed: number) {
-  const maxSpeed = baseSpeed * 3
-  const minSpeed = baseSpeed / 3
+function randomSpeed(currentSpeed: number, baseSpeed: number, factor: number) {
+  const maxSpeed = baseSpeed * factor
+  const minSpeed = baseSpeed / factor
   const changeRatio = 0.2 * Math.random() - 0.1 // random number between -0.1 and 0.1
   const updatedSpeed = (1 + changeRatio) * currentSpeed
   // prettier-ignore

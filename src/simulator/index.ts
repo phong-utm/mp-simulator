@@ -39,7 +39,34 @@ export async function generateDataForMonth(routeId: string, monthId: number) {
   let d = new Date(year, month, 1)
   while (d.getMonth() === month) {
     days.push(d)
-    d = new Date(d.getTime() + 24 * 60 * 60 * 1000) // next day
+    // d = new Date(d.getTime() + 24 * 60 * 60 * 1000) // next day
+    d = new Date(d.getTime() + 24 * 60 * 60 * 1000 * 15) // next 15 days
+  }
+
+  // generate the days in parallel
+  await Promise.all(days.map((d) => generateDate(routeId, routeData, d))).catch(
+    console.error
+  )
+
+  // console.log("DONE!!!")
+}
+
+export async function generateDataForPeriod(routeId: string, period: string) {
+  // prettier-ignore
+  const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
+
+  const year = parseInt(period.substring(0, 4))
+  const fromMonth = period.endsWith("S1") ? 0 : 6
+  const fromDate = new Date(year, fromMonth, 1)
+  const toDate = new Date(year, fromMonth + 6, period.endsWith("S1") ? 30 : 31)
+
+  // get list of days in the month
+  const days: Date[] = []
+  let d = fromDate
+  while (d.getTime() <= toDate.getTime()) {
+    days.push(d)
+    // d = new Date(d.getTime() + 24 * 60 * 60 * 1000) // next day
+    d = new Date(d.getTime() + 24 * 60 * 60 * 1000 * 15) // next 15 days
   }
 
   // generate the days in parallel
@@ -68,6 +95,7 @@ async function generateDate(routeId: string, routeData: RouteData, d: Date) {
     await generateTrip(routeId, routeData, dayId, scheduledStart, driver, {
       realtimeMode: false,
       tripStartTime: start.getTime(),
+      variationFactor: getRandomFactor(),
     })
     start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
   }
@@ -131,3 +159,8 @@ const getDriver = (drivers: string[], scheduledStart: string) => {
 }
 
 const to2Digits = (num: number) => (100 + num).toString().substring(1)
+
+const getRandomFactor = () => {
+  const x = 10 * Math.random()
+  return x <= 7 ? 1.3 : x <= 9 ? 2 : 3
+}

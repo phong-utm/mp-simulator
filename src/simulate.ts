@@ -1,4 +1,5 @@
 import {
+  generateDataForPeriod,
   generateDataForDate,
   generateDataForMonth,
   generateRealtimeData,
@@ -27,7 +28,12 @@ function main(...args: string[]) {
   const process = async () => {
     const month = getArgValue("-m")
     const date = getArgValue("-d")
-    if (month) {
+    const period = getArgValue("-p")
+
+    if (period) {
+      const route = getRequiredArgValue("-r")
+      await generateDataForPeriod(route, period)
+    } else if (month) {
       const route = getRequiredArgValue("-r")
       await generateDataForMonth(route, parseInt(month))
     } else if (date) {
