@@ -41,11 +41,6 @@ async function processPeriodAndMonths(period: string) {
   return await processPeriod(period)
 }
 
-// async function processTest() {
-//   const result = await got.post(`${config.apiBaseUrl}/test`).json()
-//   console.log(result)
-// }
-
 function main(...args: string[]) {
   const [durationType, durationId] = args
   switch (durationType) {
@@ -58,9 +53,6 @@ function main(...args: string[]) {
     case "-pm":
       processPeriodAndMonths(durationId).then(console.log).catch(console.error)
       break
-    // case "-t":
-    //   processTest().catch(console.error)
-    //   break
     default:
       console.log("Invalid CLI arguments.")
   }

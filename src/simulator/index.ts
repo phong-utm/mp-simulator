@@ -14,6 +14,9 @@ export async function generateRealtimeData(
   const scheduledStart = getScheduledStart(new Date())
   const driver = getDriver(routeData.drivers, scheduledStart)
 
+  // clean up data, just in case we previously had an incomplete trip
+  await got.post(`${config.apiBaseUrl}/cleanup`)
+
   // prettier-ignore
   console.log(`Generating data for route ${routeId} on ${dayId} scheduled at ${scheduledStart}...`)
   await generateTrip(routeId, routeData, dayId, scheduledStart, driver, options)

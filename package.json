@@ -6,6 +6,7 @@
   "scripts": {
     "simulate": "ts-node -r dotenv/config src/simulate.ts",
     "analyze": "ts-node -r dotenv/config src/analyze.ts",
+    "clean": "ts-node -r dotenv/config src/clean.ts",
     "build": "tsc",
     "test": "jest --watch"
   },
