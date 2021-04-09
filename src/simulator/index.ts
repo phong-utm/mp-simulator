@@ -37,7 +37,7 @@ export async function generateDataForMonth(routeId: string, monthId: number) {
   // get list of days in the month
   const days: Date[] = []
   let d = new Date(year, month, 1)
-  while (d.getMonth() === month) {
+  while (d.getMonth() === month && d.getTime() < getToday()) {
     days.push(d)
     // d = new Date(d.getTime() + 24 * 60 * 60 * 1000) // next day
     d = new Date(d.getTime() + 24 * 60 * 60 * 1000 * 15) // next 15 days
@@ -58,12 +58,12 @@ export async function generateDataForPeriod(routeId: string, period: string) {
   const year = parseInt(period.substring(0, 4))
   const fromMonth = period.endsWith("S1") ? 0 : 6
   const fromDate = new Date(year, fromMonth, 1)
-  const toDate = new Date(year, fromMonth + 6, period.endsWith("S1") ? 30 : 31)
+  const toDate = new Date(year, fromMonth + 5, period.endsWith("S1") ? 30 : 31)
 
   // get list of days in the month
   const days: Date[] = []
   let d = fromDate
-  while (d.getTime() <= toDate.getTime()) {
+  while (d.getTime() <= toDate.getTime() && d.getTime() < getToday()) {
     days.push(d)
     // d = new Date(d.getTime() + 24 * 60 * 60 * 1000) // next day
     d = new Date(d.getTime() + 24 * 60 * 60 * 1000 * 15) // next 15 days
@@ -163,4 +163,10 @@ const to2Digits = (num: number) => (100 + num).toString().substring(1)
 const getRandomFactor = () => {
   const x = 10 * Math.random()
   return x <= 7 ? 1.3 : x <= 9 ? 2 : 3
+}
+
+const getToday = () => {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  return today.getTime()
 }
