@@ -29,16 +29,19 @@ function main(...args: string[]) {
     const month = getArgValue("-m")
     const date = getArgValue("-d")
     const period = getArgValue("-p")
+    const scheduleVarMargin = getArgValue("--scheduleVar")
+    const scheduleVarMins =
+      scheduleVarMargin !== undefined ? parseInt(scheduleVarMargin) : 0
 
     if (period) {
       const route = getRequiredArgValue("-r")
-      await generateDataForPeriod(route, period)
+      await generateDataForPeriod(route, period, scheduleVarMins)
     } else if (month) {
       const route = getRequiredArgValue("-r")
-      await generateDataForMonth(route, parseInt(month))
+      await generateDataForMonth(route, parseInt(month), scheduleVarMins)
     } else if (date) {
       const route = getRequiredArgValue("-r")
-      await generateDataForDate(route, parseInt(date))
+      await generateDataForDate(route, parseInt(date), scheduleVarMins)
     } else {
       const route = getArgValue("-r") || "R"
       const accelerate = getArgValue("-a")

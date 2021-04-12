@@ -23,14 +23,22 @@ export async function generateRealtimeData(
   // console.log("DONE!!!")
 }
 
-export async function generateDataForDate(routeId: string, dayId: number) {
+export async function generateDataForDate(
+  routeId: string,
+  dayId: number,
+  scheduleVarMins: number
+) {
   // prettier-ignore
   const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
-  await generateDate(routeId, routeData, parseDayId(dayId))
+  await generateDate(routeId, routeData, parseDayId(dayId), scheduleVarMins)
   // console.log("DONE!!!")
 }
 
-export async function generateDataForMonth(routeId: string, monthId: number) {
+export async function generateDataForMonth(
+  routeId: string,
+  monthId: number,
+  scheduleVarMins: number
+) {
   // prettier-ignore
   const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
 
@@ -47,14 +55,18 @@ export async function generateDataForMonth(routeId: string, monthId: number) {
   }
 
   // generate the days in parallel
-  await Promise.all(days.map((d) => generateDate(routeId, routeData, d))).catch(
-    console.error
-  )
+  await Promise.all(
+    days.map((d) => generateDate(routeId, routeData, d, scheduleVarMins))
+  ).catch(console.error)
 
   // console.log("DONE!!!")
 }
 
-export async function generateDataForPeriod(routeId: string, period: string) {
+export async function generateDataForPeriod(
+  routeId: string,
+  period: string,
+  scheduleVarMins: number
+) {
   // prettier-ignore
   const routeData = await got(`${config.apiBaseUrl}/routes/${routeId}`).json<RouteData>()
 
@@ -73,9 +85,9 @@ export async function generateDataForPeriod(routeId: string, period: string) {
   }
 
   // generate the days in parallel
-  await Promise.all(days.map((d) => generateDate(routeId, routeData, d))).catch(
-    console.error
-  )
+  await Promise.all(
+    days.map((d) => generateDate(routeId, routeData, d, scheduleVarMins))
+  ).catch(console.error)
 
   // console.log("DONE!!!")
 }
@@ -88,16 +100,25 @@ export async function generateDataForPeriod(routeId: string, period: string) {
 
 /************ HELPER FUNCTIONS ***********/
 
-async function generateDate(routeId: string, routeData: RouteData, d: Date) {
+async function generateDate(
+  routeId: string,
+  routeData: RouteData,
+  d: Date,
+  scheduleVarMins: number
+) {
   const dayId = getDayId(d)
-  console.log(`Generating data for route ${routeId} on ${dayId}...`)
+  console.log(
+    `Generating data for route ${routeId} on ${dayId}, scheduleVar = ${scheduleVarMins} mins...`
+  )
   let start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6)
   while (start.getHours() < 21) {
     const scheduledStart = getScheduledStart(start)
+    const randomVarTime =
+      (2 * scheduleVarMins * Math.random() - scheduleVarMins) * 60 * 1000
     const driver = getDriver(routeData.drivers, scheduledStart)
     await generateTrip(routeId, routeData, dayId, scheduledStart, driver, {
       realtimeMode: false,
-      tripStartTime: start.getTime(),
+      tripStartTime: start.getTime() + randomVarTime,
       variationFactor: getSpeedVarFactor(scheduledStart),
     })
     start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
