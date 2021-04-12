@@ -91,9 +91,9 @@ export default class TripSimulator {
 
   private calculateDwellTimeAtStop() {
     const boardingPassengers =
-      Math.round(Math.random()) * Math.floor(Math.random() * 10)
+      Math.round(Math.random()) * randomNoOfPassengers()
     const alightingPassengers =
-      Math.round(Math.random()) * Math.floor(Math.random() * 10)
+      Math.round(Math.random()) * randomNoOfPassengers()
     const boadingTime = boardingPassengers * PER_PASSENGER_BOADING_SECS
     const alightingTime = alightingPassengers * PER_PASSENGER_ALIGHTING_SECS
     return boadingTime > 0 || alightingTime > 0
@@ -167,4 +167,11 @@ function randomSpeed(currentSpeed: number, baseSpeed: number, factor: number) {
   const updatedSpeed = (1 + changeRatio) * currentSpeed
   // prettier-ignore
   return updatedSpeed > maxSpeed ? maxSpeed : updatedSpeed < minSpeed ? minSpeed : updatedSpeed
+}
+
+function randomNoOfPassengers() {
+  // 80% - up to 4 passengers, 20% - 5 to 10 passengers
+  return Math.round(
+    Math.random() < 0.8 ? 4 * Math.random() : 5 + 5 * Math.random()
+  )
 }

@@ -98,7 +98,7 @@ async function generateDate(routeId: string, routeData: RouteData, d: Date) {
     await generateTrip(routeId, routeData, dayId, scheduledStart, driver, {
       realtimeMode: false,
       tripStartTime: start.getTime(),
-      variationFactor: getRandomFactor(),
+      variationFactor: getSpeedVarFactor(scheduledStart),
     })
     start = new Date(start.getTime() + 15 * 60 * 1000) // next trip in 15 minutes
   }
@@ -163,9 +163,14 @@ const getDriver = (drivers: string[], scheduledStart: string) => {
 
 const to2Digits = (num: number) => (100 + num).toString().substring(1)
 
-const getRandomFactor = () => {
-  const x = 10 * Math.random()
-  return x <= 7 ? 1.3 : x <= 9 ? 2 : 3
+const getSpeedVarFactor = (scheduledStart: string) => {
+  return (scheduledStart > "08:00" && scheduledStart <= "09:00") ||
+    (scheduledStart > "17:30" && scheduledStart <= "18:30")
+    ? 3
+    : (scheduledStart > "07:00" && scheduledStart <= "09:30") ||
+      (scheduledStart > "17:00" && scheduledStart <= "19:00")
+    ? 2
+    : 1.3
 }
 
 const getToday = () => {
